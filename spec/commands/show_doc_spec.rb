@@ -417,7 +417,7 @@ describe "show-doc" do
     end
 
     it 'should display help for a specific command' do
-      expect(pry_eval('show-doc ls')).to match(/Usage: ls/)
+      expect(pry_eval('show-doc help')).to match(/Usage: help/)
     end
 
     it 'should display help for a regex command with a "listing"' do
