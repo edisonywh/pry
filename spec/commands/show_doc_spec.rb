@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "fixtures/show_source_doc_examples"
-
 describe "show-doc" do
   before do
     @o = Object.new
@@ -300,51 +298,88 @@ describe "show-doc" do
     end
 
     describe "show-doc -a" do
-      it 'should show the docs for all monkeypatches defined in different files' do
-        # local monkeypatch
-        class TestClassForShowSource
-          def epsilon; end
-        end
+      context "when there are monkeypatches in different files" do
+        let(:tempfile) { Tempfile.new }
 
-        result = pry_eval("show-doc TestClassForShowSource -a")
-        expect(result).to match(/used by/)
-        expect(result).to match(/local monkeypatch/)
-      end
+        before do
+          tempfile.puts(<<-CLASS)
+            # file monkeypatch
+            class TestClass
+              def alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
 
-      describe "messages relating to -a" do
-        it "displays the original definition by default (not a doc of a monkeypatch)" do
-          class TestClassForCandidatesOrder
+          # local monkeypatch
+          class TestClass
             def beta; end
           end
-
-          result = pry_eval("show-doc TestClassForCandidatesOrder")
-          expect(result).to match(/Number of monkeypatches: 2/)
-          expect(result).to match(/The first definition/)
         end
 
-        it 'indicates all available monkeypatches can be shown with -a ' \
-          '(when -a not used and more than one candidate exists for class)' do
-          # Still reading boring tests, eh?
-          class TestClassForShowSource
-            def delta; end
-          end
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
+        end
 
-          result = pry_eval('show-doc TestClassForShowSource')
+        it "shows them" do
+          result = pry_eval("show-doc TestClass -a")
+          expect(result).to match(/file monkeypatch/)
+          expect(result).to match(/local monkeypatch/)
+        end
+      end
+
+      context "when -a is not used and there are multiple monkeypatches" do
+        let(:tempfile) { Tempfile.new }
+
+        before do
+          tempfile.puts(<<-CLASS)
+            # alpha
+            class TestClass
+              def alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
+
+          # beta
+          class TestClass
+            def beta; end
+          end
+        end
+
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
+        end
+
+        it "correctly displays the number of monkeypatches" do
+          result = pry_eval("show-doc TestClass")
+          expect(result).to match(/Number of monkeypatches: 2/)
+          expect(result).to match(/alpha/)
+        end
+
+        it "mentions available monkeypatches" do
+          result = pry_eval("show-doc TestClass")
           expect(result).to match(/available monkeypatches/)
         end
+      end
 
-        it(
-          'shouldnt say anything about monkeypatches when only one ' \
-          'candidate exists for selected class'
-        ) do
-          # Do not remove me.
-          class Aarrrrrghh
-            def o; end
+      context "when -a is not used and there's only one candidate for the class" do
+        before do
+          # alpha
+          class TestClass
+            def alpha; end
           end
+        end
 
-          result = pry_eval('show-doc Aarrrrrghh')
+        after do
+          Object.remove_const(:TestClass)
+        end
+
+        it "doesn't mention anything about monkeypatches" do
+          result = pry_eval('show-doc TestClass')
           expect(result).not_to match(/available monkeypatches/)
-          Object.remove_const(:Aarrrrrghh)
         end
       end
     end
@@ -469,11 +504,32 @@ describe "show-doc" do
   end
 
   describe "should set _file_ and _dir_" do
+    let(:tempfile) { Tempfile.new }
+
+    before do
+      tempfile.puts(<<-CLASS)
+        class TestClass
+          # this is alpha
+          def alpha; end
+        end
+      CLASS
+      tempfile.close
+      load(tempfile.path)
+    end
+
+    after do
+      Object.remove_const(:TestClass)
+      tempfile.unlink
+    end
+
     it 'should set _file_ and _dir_ to file containing method source' do
       t = pry_tester
-      t.process_command "show-doc TestClassForShowSource#alpha"
-      expect(t.pry.last_file).to match(/show_source_doc_examples/)
-      expect(t.pry.last_dir).to match(/fixtures/)
+      t.process_command "show-doc TestClass#alpha"
+
+      path = tempfile.path.split('/')[0..-2].join('/')
+      expect(t.pry.last_dir).to match(path)
+
+      expect(t.pry.last_file).to match(tempfile.path)
     end
   end
 

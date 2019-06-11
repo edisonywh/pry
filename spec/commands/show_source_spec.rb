@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "fixtures/show_source_doc_examples"
-
 describe "show-source" do
   before do
     @o = Object.new
@@ -515,71 +513,172 @@ describe "show-source" do
     # ONCE per file, so will not find multiple monkeypatches in the
     # SAME file.
     describe "show-source -a" do
-      it 'should show the source for all monkeypatches defined in different files' do
-        class TestClassForShowSource
-          def beta; end
-        end
+      context "when there are instance method monkeypatches in different files" do
+        let(:tempfile) { Tempfile.new }
 
-        result = pry_eval('show-source TestClassForShowSource -a')
-        expect(result).to match(/def alpha/)
-        expect(result).to match(/def beta/)
-      end
+        before do
+          tempfile.puts(<<-CLASS)
+            class TestClass
+              def alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
 
-      it 'should show the source for a class_eval-based monkeypatch' do
-        TestClassForShowSourceClassEval.class_eval do
-          def class_eval_method; end
-        end
-
-        result = pry_eval('show-source TestClassForShowSourceClassEval -a')
-        expect(result).to match(/def class_eval_method/)
-      end
-
-      it 'should ignore -a when object is not a module' do
-        TestClassForShowSourceClassEval.class_eval do
-          def class_eval_method
-            :bing
+          class TestClass
+            def beta; end
           end
         end
 
-        result = pry_eval(
-          'show-source TestClassForShowSourceClassEval#class_eval_method -a'
-        )
-        expect(result).to match(/bing/)
-      end
-
-      it 'should show the source for an instance_eval-based monkeypatch' do
-        TestClassForShowSourceInstanceEval.instance_eval do
-          def instance_eval_method; end
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
         end
 
-        result = pry_eval('show-source TestClassForShowSourceInstanceEval -a')
-        expect(result).to match(/def instance_eval_method/)
+        it "shows the source for all monkeypatches" do
+          result = pry_eval('show-source TestClass -a')
+          expect(result).to match(/def alpha/)
+          expect(result).to match(/def beta/)
+        end
       end
 
-      describe "messages relating to -a" do
-        it(
-          'indicates all available monkeypatches can be shown with -a when ' \
-          '(when -a not used and more than one candidate exists for class)'
-        ) do
-          class TestClassForShowSource
-            def gamma; end
-          end
+      context "when there are class method monkeypatches in different files" do
+        let(:tempfile) { Tempfile.new }
 
-          result = pry_eval('show-source TestClassForShowSource')
+        before do
+          tempfile.puts(<<-CLASS)
+            class TestClass
+              def self.alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
+
+          class TestClass
+            def self.beta; end
+          end
+        end
+
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
+        end
+
+        it "shows the source for all monkeypatches" do
+          result = pry_eval('show-source TestClass -a')
+          expect(result).to match(/def self.alpha/)
+          expect(result).to match(/def self.beta/)
+        end
+      end
+
+      context "when there are class-eval monkeypatches in different files" do
+        let(:tempfile) { Tempfile.new }
+
+        before do
+          tempfile.puts(<<-CLASS)
+            class TestClass
+              def self.alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
+
+          TestClass.class_eval do
+            def class_eval_method
+              :bing
+            end
+          end
+        end
+
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
+        end
+
+        it "shows the source for all monkeypatches" do
+          result = pry_eval('show-source TestClass -a')
+          expect(result).to match(/def class_eval_method/)
+        end
+
+        it "ignores -a because object is not a module" do
+          result = pry_eval('show-source TestClass#class_eval_method -a')
+          expect(result).to match(/bing/)
+        end
+      end
+
+      context "when there are instance-eval monkeypatches in different files" do
+        let(:tempfile) { Tempfile.new }
+
+        before do
+          tempfile.puts(<<-CLASS)
+            class TestClass
+              def self.alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
+
+          TestClass.instance_eval do
+            def instance_eval_method
+              :bing
+            end
+          end
+        end
+
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
+        end
+
+        it "shows the source for all monkeypatches" do
+          result = pry_eval('show-source TestClass -a')
+          expect(result).to match(/def instance_eval_method/)
+        end
+      end
+
+      context "when -a is not used and there are multiple monkeypatches" do
+        let(:tempfile) { Tempfile.new }
+
+        before do
+          tempfile.puts(<<-CLASS)
+            class TestClass
+              def self.alpha; end
+            end
+          CLASS
+          tempfile.close
+          load(tempfile.path)
+
+          class TestClass
+            def beta; end
+          end
+        end
+
+        after do
+          Object.remove_const(:TestClass)
+          tempfile.unlink
+        end
+
+        it "mentions available monkeypatches" do
+          result = pry_eval('show-source TestClass')
           expect(result).to match(/available monkeypatches/)
         end
+      end
 
-        it(
-          "doesn't mention monkeypatches when only 1 candidate exists for " \
-          "selected class"
-        ) do
-          class Aarrrrrghh
-            def o; end
+      context "when -a is not used and there's only one candidate for the class" do
+        before do
+          # alpha
+          class TestClass
+            def alpha; end
           end
+        end
 
-          result = pry_eval('show-source Aarrrrrghh')
+        after do
+          Object.remove_const(:TestClass)
+        end
+
+        it "doesn't mention anything about monkeypatches" do
+          result = pry_eval('show-source TestClass')
           expect(result).not_to match(/available monkeypatches/)
-          Object.remove_const(:Aarrrrrghh)
         end
       end
     end
@@ -803,11 +902,31 @@ describe "show-source" do
   end
 
   describe "should set _file_ and _dir_" do
+    let(:tempfile) { Tempfile.new }
+
+    before do
+      tempfile.puts(<<-CLASS)
+        class TestClass
+          def alpha; end
+        end
+      CLASS
+      tempfile.close
+      load(tempfile.path)
+    end
+
+    after do
+      Object.remove_const(:TestClass)
+      tempfile.unlink
+    end
+
     it 'should set _file_ and _dir_ to file containing method source' do
       t = pry_tester
-      t.process_command "show-source TestClassForShowSource#alpha"
-      expect(t.pry.last_file).to match(/show_source_doc_examples/)
-      expect(t.pry.last_dir).to match(/fixtures/)
+      t.process_command "show-source TestClass#alpha"
+
+      path = tempfile.path.split('/')[0..-2].join('/')
+      expect(t.pry.last_dir).to match(path)
+
+      expect(t.pry.last_file).to match(tempfile.path)
     end
   end
 
