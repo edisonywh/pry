@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 describe "show-doc" do
+  def define_persistent_class(file, class_body)
+    file.puts(class_body)
+    file.close
+    load(file.path)
+  end
+
   before do
     @o = Object.new
 
@@ -298,18 +304,16 @@ describe "show-doc" do
     end
 
     describe "show-doc -a" do
-      context "when there are monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
+      let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
+      context "when there are monkeypatches in different files" do
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             # file monkeypatch
             class TestClass
               def alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           # local monkeypatch
           class TestClass
@@ -330,17 +334,13 @@ describe "show-doc" do
       end
 
       context "when -a is not used and there are multiple monkeypatches" do
-        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
-
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             # alpha
             class TestClass
               def alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           # beta
           class TestClass
@@ -507,14 +507,12 @@ describe "show-doc" do
     let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
     before do
-      tempfile.puts(<<-CLASS)
+      define_persistent_class(tempfile, <<-CLASS)
         class TestClass
           # this is alpha
           def alpha; end
         end
       CLASS
-      tempfile.close
-      load(tempfile.path)
     end
 
     after do

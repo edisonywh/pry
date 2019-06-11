@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 describe "show-source" do
+  def define_persistent_class(file, class_body)
+    file.puts(class_body)
+    file.close
+    load(file.path)
+  end
+
   before do
     @o = Object.new
     def @o.sample_method
@@ -513,17 +519,15 @@ describe "show-source" do
     # ONCE per file, so will not find multiple monkeypatches in the
     # SAME file.
     describe "show-source -a" do
-      context "when there are instance method monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
+      let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
+      context "when there are instance method monkeypatches in different files" do
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             class TestClass
               def alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           class TestClass
             def beta; end
@@ -543,16 +547,12 @@ describe "show-source" do
       end
 
       context "when there are class method monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
-
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             class TestClass
               def self.alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           class TestClass
             def self.beta; end
@@ -575,13 +575,11 @@ describe "show-source" do
         let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             class TestClass
               def self.alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           TestClass.class_eval do
             def class_eval_method
@@ -610,13 +608,11 @@ describe "show-source" do
         let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             class TestClass
               def self.alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           TestClass.instance_eval do
             def instance_eval_method
@@ -640,13 +636,11 @@ describe "show-source" do
         let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
-          tempfile.puts(<<-CLASS)
+          define_persistent_class(tempfile, <<-CLASS)
             class TestClass
               def self.alpha; end
             end
           CLASS
-          tempfile.close
-          load(tempfile.path)
 
           class TestClass
             def beta; end
@@ -905,13 +899,11 @@ describe "show-source" do
     let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
     before do
-      tempfile.puts(<<-CLASS)
+      define_persistent_class(tempfile, <<-CLASS)
         class TestClass
           def alpha; end
         end
       CLASS
-      tempfile.close
-      load(tempfile.path)
     end
 
     after do
