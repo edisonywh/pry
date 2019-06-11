@@ -514,7 +514,7 @@ describe "show-source" do
     # SAME file.
     describe "show-source -a" do
       context "when there are instance method monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new }
+        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
           tempfile.puts(<<-CLASS)
@@ -543,7 +543,7 @@ describe "show-source" do
       end
 
       context "when there are class method monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new }
+        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
           tempfile.puts(<<-CLASS)
@@ -572,7 +572,7 @@ describe "show-source" do
       end
 
       context "when there are class-eval monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new }
+        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
           tempfile.puts(<<-CLASS)
@@ -607,7 +607,7 @@ describe "show-source" do
       end
 
       context "when there are instance-eval monkeypatches in different files" do
-        let(:tempfile) { Tempfile.new }
+        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
           tempfile.puts(<<-CLASS)
@@ -637,7 +637,7 @@ describe "show-source" do
       end
 
       context "when -a is not used and there are multiple monkeypatches" do
-        let(:tempfile) { Tempfile.new }
+        let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
         before do
           tempfile.puts(<<-CLASS)
@@ -902,7 +902,7 @@ describe "show-source" do
   end
 
   describe "should set _file_ and _dir_" do
-    let(:tempfile) { Tempfile.new }
+    let(:tempfile) { Tempfile.new(%w[pry .rb]) }
 
     before do
       tempfile.puts(<<-CLASS)
